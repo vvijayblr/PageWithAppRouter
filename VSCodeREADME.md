@@ -14,7 +14,7 @@ The second route points to a localDir (local directory) and in combination with 
 The Package.json
 Our approuter is a node.js based application, which means we need a package.json file describing the application and its dependencies (only one in this case). We create the following file on root level of the project (next to all other files):
 
-By the way: The approach we are following here with our approuter is also referred to as a “standalone approuter”. You can read about the differences between a standalone and managed approuters in this blog post.
+By the way: The approach we are following here with our approuter is also referred to as a “standalone approuter”. You can read about the differences between a standalone and managed approuters in this blog post: https://blogs.sap.com/2021/05/17/sap-tech-bytes-faq-managed-approuter-vs.-standalone-approuter/
 
 Deployment Configuration - manifest.yaml
 To be able to deploy our approuter to Cloud Foundry (cf push), we need a manifest.yaml file as our deployment descriptor. We create this file on root level of the project:
@@ -37,7 +37,7 @@ Deployment
 Next, we can deploy our application to the SAP BTP, Cloud Foundry environment. We should already be logged in to our space. We can execute the cf push command to start the deployment process. The process may take a minute or two. Once it’s done, we can see the URL of the application in the terminal output:
 
 C:\VijayFolder\CloudFoundry\PageWithAppRouter>cf push
-Pushing app my-web-page to org 3484523btrial / space dev as velayutham.vijayakumar@gmail.com...
+Pushing app my-web-page to org XXXXXXXXXXtrial / space dev as XXXXXXXXXXXXXXXXx@xxxxxxxxxx.com...
 Applying manifest file C:\VijayFolder\CloudFoundry\PageWithAppRouter\manifest.yaml...
 
 Updating with these attributes...
