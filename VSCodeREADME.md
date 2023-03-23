@@ -140,7 +140,81 @@ start command:   npm start
 #0   running   2023-03-22T12:55:34Z   0.0%   0 of 1G   0 of 1G   0/s of 0/s
 
 
-When opening the URL, you will notice that you are being redirected to a login page. You can login with the same credentials you use to login to your SAP BTP account. You might get logged in with Single-Sign-On, in which case the login is hardly noticeable, but you can be sure you are logged in if you see your name being displayed in the UI5 app:
+When opening the URL, you will notice that you are being redirected to a login page (https://3484523btrial.authentication.us10.hana.ondemand.com/login). You can login with the same credentials you use to login to your SAP BTP account. You might get logged in with Single-Sign-On, in which case the login is hardly noticeable, but you can be sure you are logged in if you see your name being displayed in the UI5 app:
 
 And that’s it. We have deployed an approuter, which is authenticating users and serving a web page to the SAP BTP, Cloud Foundry environment.
+
+Cloud Foundry Basics #3
+https://blogs.sap.com/2022/08/03/sap-tech-bytes-consume-data-using-destinations-with-an-approuter-cloud-foundry-basics-3/
+
+we will use this approuter to consume data through a destination instance of the Destination Service on the SAP Business Technology Platform, Cloud Foundry environment.
+
+The approuter is bound to an instance of the Authorization and Trust Management Service (xsuaa) in Cloud Foundry. This allows us to call the /user-api/currentUser endpoint and get information about the logged in user. All of this routing configuration is defined in the xs-app.json file
+
+Adding a New Route
+We will now extend this xs-app.json file with a new “^/backend(.*)” route. We want the approuter to forward all requests that hit that route to the destination that will be bound to the application. We therefore add a new route to the xs-app.json file as the second route in the array, before the “^(.*)$” route. The order of the routes does matter, because the approuter compares the requests and routes from top to bottom and will select the route that matches first.
+
+      {
+        "source": "^/backend(.*)",
+        "target": "$1",
+        "destination": "backendDestination",
+        "authenticationType": "none"
+      },
+
+The regular expression “^/backend(.*)” will also match requests such as /backend/Products, so we will be able to request specific recourse from that API.
+
+In case you are wondering why “target”: “$1” is included in all the routes: It means that the target of the request will be the first capture group that matches the regular expression of the route. If we send a request /backend/Products, the first capture group that matches the “^/backend(.*)” regular expression is /Products, leaving us with “target”: “/Products”, which will be attached to the destination. Essentially, it makes sure that the word “backend”, which is just a placeholder for us, will not actually be sent to the destination.
+
+Creating the Destination
+Next, we want to create an instance of the Destination Service in Cloud Foundry. We will use the Cloud Foundry CLI in this case, but you could achieve the same thing using SAP BTP Cockpit.
+
+First, we create a configuration file that holds the information about the destination (more info in the official documentation). We create the following dest-config.json file:
+
+{
+    "init_data": {
+        "instance": {
+            "existing_destinations_policy": "update",
+            "destinations": [
+		{
+                    "Name": "backendDestination",
+                    "Authentication": "NoAuthentication",
+                    "ProxyType": "Internet",
+                    "Type": "HTTP",
+                    "URL": "https://services.odata.org/V4/Northwind/Northwind.svc/"
+              }
+            ]
+        }
+    }
+}
+
+Notice how the name of the destination matches the name we specified for the route in the xs-app.json of the approuter – this is very important. For the URL we specified the popular Northwind OData service, but feel free to replace this with any other REST based API you want to consume
+
+We can now go ahead and create an instance of the Destination Service using this configuration. Make sure to be logged in to your Cloud Foundry environment. We execute the following command to create the instance by specifying a service, service plan, instance name and configuration file:
+
+cf create-service destination lite backendDestination -c dest-config.json
+
+Binding the Application to the Destination Instance
+We want to extend our manifest.yaml file so that our application will be automatically bound to the backendDestination instance during deployment. We add the service instance to the services section of the file, so it looks like this:
+
+---
+applications:
+- name: my-web-page
+  buildpack: https://github.com/cloudfoundry/nodejs-buildpack
+  random-route: true
+  services:
+  - my-xsuaa
+  - backendDestination
+We also added the “random-route: true” attribute to the configuration, which will make sure our application will have a unique URL. Someone else might have already deployed an application called “my-web-page” your region and we want to avoid conflicts.
+
+Deploying and Testing Application
+We can now go ahead and deploy the application using the cf push command, just like we did in the previous post. In the terminal output, we will get the URL (route) to our application:
+
+When visiting the URL https://my-web-page-reflective-grysbok-fp.cfapps.us10-001.hana.ondemand.com, we don’t see any visible changes compared to the previous post, which is fine, since we did not touch the UI at all. The new feature we implemented unveils itself if we attach our /backend route to the URL of our application: https://my-web-page-reflective-grysbok-fp.cfapps.us10-001.hana.ondemand.com/backend
+The approuter forwards the /backend request to the Northwind OData service and sends the response back to our application. We can see the Northwind service, but looking at the URL it appears as if is “part of our application”. 
+
+We can also try and request specific entities of the Northwind service such as /Products, which also works:
+https://my-web-page-reflective-grysbok-fp.cfapps.us10-001.hana.ondemand.com/backend/Products
+
+And that’s it. We can now use our approuter to consume data from an external API using the Destination Service in Cloud Foundry. We can simply call a relative URL (/backend/Products) from the application to get the data.
+
 

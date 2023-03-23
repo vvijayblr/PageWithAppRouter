@@ -8,6 +8,12 @@
             "service": "sap-approuter-userapi"
         },
         {
+            "source": "^/backend(.*)",
+            "target": "$1",
+            "destination": "backendDestination",
+            "authenticationType": "none"
+        },
+        {
             "source": "^(.*)$",
             "target": "$1",
             "authenticationType": "xsuaa",
